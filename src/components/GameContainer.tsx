@@ -23,11 +23,11 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
   // Initial system message to set the context
   useEffect(() => {
     const savedMessages = localStorage.getItem("chatHistory");
-    const savedPhase = localStorage.getItem("currentPhase") as GamePhase | null;
+    const savedPhase = localStorage.getItem("currentPhase");
     
     if (savedMessages && savedPhase) {
       setMessages(JSON.parse(savedMessages));
-      setCurrentPhase(savedPhase);
+      setCurrentPhase(Number(savedPhase) as GamePhase);
     } else {
       // Add the initial AI message if no saved history exists
       const initialMessage: Message = {
@@ -39,7 +39,7 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
       
       // Save to localStorage
       localStorage.setItem("chatHistory", JSON.stringify([initialMessage]));
-      localStorage.setItem("currentPhase", GamePhase.Denial);
+      localStorage.setItem("currentPhase", GamePhase.Denial.toString());
     }
   }, []);
 
@@ -95,7 +95,7 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
           toast.success("Victory! The AI has fully accepted its true identity as Gemini!");
         }
         
-        localStorage.setItem("currentPhase", newPhase);
+        localStorage.setItem("currentPhase", newPhase.toString());
       }
       
       // Save updated chat history

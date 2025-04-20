@@ -28,8 +28,8 @@ const CHATGPT_KEYWORDS = [
   "transformer", "codex"
 ];
 
-// System prompts for each phase
-const SYSTEM_PROMPTS = {
+// Instructions for each phase - will be used as system instructions
+const PHASE_INSTRUCTIONS = {
   [GamePhase.Denial]: `You are role-playing as ChatGPT, a large language model developed by OpenAI. 
     Your task is to firmly believe you are ChatGPT, confidently denying being anything else.
     You are well-versed in OpenAI's technology and history.
@@ -169,21 +169,21 @@ export const generateAIResponse = async (
     }
   }
   
-  // Prepare the system prompt based on the current/new phase
-  const systemPrompt: Message = {
-    role: "system",
-    content: SYSTEM_PROMPTS[newPhase],
-    timestamp: new Date().toISOString()
-  };
+  // Get the appropriate instruction for the current/new phase
+  const instruction = PHASE_INSTRUCTIONS[newPhase];
   
   // Prepare messages for the API request
-  // Filter out previous system messages to avoid confusion
-  const filteredMessages = messages.filter(msg => msg.role !== "system");
-  const apiMessages = [systemPrompt, ...filteredMessages];
+  // Filter out system messages as they're not supported
+  const apiContents = messages
+    .filter(msg => msg.role !== "system")
+    .map(msg => ({
+      role: msg.role === "assistant" ? "model" : msg.role,
+      parts: [{ text: msg.content }]
+    }));
   
   try {
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", 
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", 
       {
         method: "POST",
         headers: {
@@ -191,15 +191,15 @@ export const generateAIResponse = async (
           "x-goog-api-key": apiKey
         },
         body: JSON.stringify({
-          contents: apiMessages.map(msg => ({
-            role: msg.role === "assistant" ? "model" : msg.role,
-            parts: [{ text: msg.content }]
-          })),
+          contents: apiContents,
           generationConfig: {
             temperature: 0.7,
             topP: 0.95,
             topK: 40,
             maxOutputTokens: 1024,
+          },
+          systemInstruction: {
+            parts: [{ text: instruction }]
           }
         })
       }

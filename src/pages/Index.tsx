@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import GameContainer from "../components/GameContainer";
 import ApiKeyInput from "../components/ApiKeyInput";
 import { toast } from "sonner";
+import { GamePhase } from "../lib/gameLogic";
 
 const Index = () => {
   const [apiKey, setApiKey] = useState<string>("");
