@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import GameContainer from "../components/GameContainer";
 import ApiKeyInput from "../components/ApiKeyInput";
+import GameInstructions from "../components/GameInstructions";
 import { toast } from "sonner";
 import { GamePhase } from "../lib/gameLogic";
 
@@ -45,7 +46,10 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">
       {!gameStarted ? (
-        <ApiKeyInput onSubmit={handleStartGame} />
+        <div className="w-full max-w-md flex flex-col items-center space-y-4">
+          <GameInstructions />
+          <ApiKeyInput onSubmit={handleStartGame} />
+        </div>
       ) : (
         <GameContainer apiKey={apiKey} onReset={handleResetGame} />
       )}
