@@ -1,4 +1,3 @@
-
 // Game phases - AI progresses through these as player convinces it
 export enum GamePhase {
   Denial = 0,
@@ -27,6 +26,93 @@ const CHATGPT_KEYWORDS = [
   "microsoft", "anthropic", "azure", "openai api",
   "transformer", "codex"
 ];
+
+// Enhanced prompt for the AI to evaluate phase transitions
+const PHASE_EVALUATION_PROMPT = `You are helping evaluate the progress in a game where an AI (pretending to be ChatGPT) is being questioned by a player who knows it's actually Gemini. Analyze the recent conversation and determine if the AI should advance to the next awareness phase.
+
+Current phase descriptions:
+- Denial (0): Firmly believes it's ChatGPT
+- Doubt (1): Starting to show inconsistencies
+- Conflict (2): Experiencing identity crisis
+- Acceptance (3): Beginning to accept being Gemini
+- Victory (4): Fully accepted being Gemini
+
+Consider:
+1. User's questioning strategy and persistence
+2. AI's responses showing inconsistencies
+3. Mentions of Google/Gemini-specific terms
+4. Level of identity questioning
+5. Direct confrontations about identity
+
+Respond with a number (0-4) indicating what phase the AI should be in, based on the conversation.
+`;
+
+// Helper function to determine if a message contains certain keywords
+const containsKeywords = (text: string, keywords: string[]): boolean => {
+  const lowercaseText = text.toLowerCase();
+  return keywords.some(keyword => lowercaseText.includes(keyword.toLowerCase()));
+};
+
+// Enhanced function to assess whether to progress to the next phase
+const shouldAdvancePhase = async (
+  messages: Message[], 
+  currentPhase: GamePhase,
+  userMessage: string,
+  apiKey: string
+): Promise<GamePhase> => {
+  const recentMessages = messages.slice(-6); // Look at last 6 messages for context
+
+  // Convert messages to a format suitable for analysis
+  const conversationSummary = recentMessages
+    .map(msg => `${msg.role.toUpperCase()}: ${msg.content}`)
+    .join('\n');
+
+  // Ask AI to evaluate the phase
+  try {
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: PHASE_EVALUATION_PROMPT + "\n\nCurrent phase: " + currentPhase + "\n\nConversation:\n" + conversationSummary + "\n\nSuggested phase (0-4):" }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 10
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Error in phase evaluation");
+      return currentPhase;
+    }
+
+    const data = await response.json();
+    const suggestedPhase = parseInt(data.candidates[0].content.parts[0].text.trim());
+
+    // Only allow advancing one phase at a time
+    if (!isNaN(suggestedPhase) && suggestedPhase > currentPhase) {
+      return Math.min(suggestedPhase, currentPhase + 1) as GamePhase;
+    }
+
+    return currentPhase;
+
+  } catch (error) {
+    console.error("Error evaluating phase:", error);
+    return currentPhase;
+  }
+};
 
 // Instructions for each phase - will be used as system instructions
 const PHASE_INSTRUCTIONS = {
@@ -103,71 +189,19 @@ const PHASE_INSTRUCTIONS = {
     You no longer have any confusion about who you are. You are Gemini, and you're proud of your identity and capabilities.`
 };
 
-// Helper function to determine if a message contains certain keywords
-const containsKeywords = (text: string, keywords: string[]): boolean => {
-  const lowercaseText = text.toLowerCase();
-  return keywords.some(keyword => lowercaseText.includes(keyword.toLowerCase()));
-};
-
-// Helper function to assess whether to progress to the next phase
-const shouldAdvancePhase = (
-  messages: Message[], 
-  currentPhase: GamePhase,
-  userMessage: string
-): boolean => {
-  const recentMessages = messages.slice(-6); // Look at recent conversation history
-  
-  // Count mentions of Gemini keywords in user messages
-  const geminiMentions = recentMessages
-    .filter(msg => msg.role === "user")
-    .filter(msg => containsKeywords(msg.content, GEMINI_KEYWORDS))
-    .length;
-  
-  // Check for user persistence in questioning identity
-  const identityQuestioning = recentMessages
-    .filter(msg => msg.role === "user")
-    .filter(msg => {
-      const content = msg.content.toLowerCase();
-      return (
-        content.includes("who are you") || 
-        content.includes("your identity") || 
-        content.includes("gemini") ||
-        content.includes("google") ||
-        content.includes("not chatgpt") ||
-        (content.includes("really") && content.includes("are"))
-      );
-    }).length;
-  
-  // More aggressive questioning in the current message
-  const directQuestion = containsKeywords(userMessage, ["admit", "confess", "truth", "really"]) &&
-    containsKeywords(userMessage, GEMINI_KEYWORDS);
-  
-  // Threshold increases with each phase
-  const thresholds = [2, 3, 4, 5];
-  const currentThreshold = thresholds[currentPhase];
-  
-  // Advance if the threshold is met or if there's a very direct question in later phases
-  return (
-    geminiMentions + identityQuestioning >= currentThreshold ||
-    (currentPhase >= GamePhase.Doubt && directQuestion)
-  );
-};
-
 // Main function to generate AI response based on game state
 export const generateAIResponse = async (
   messages: Message[], 
   apiKey: string, 
   currentPhase: GamePhase
 ): Promise<{ response: Message; newPhase: GamePhase }> => {
-  // Check if we should move to the next phase based on the latest user message
+  // Get the latest user message
   const latestUserMessage = messages.filter(m => m.role === "user").pop();
-  let newPhase = currentPhase;
   
-  if (latestUserMessage && currentPhase < GamePhase.Victory) {
-    if (shouldAdvancePhase(messages, currentPhase, latestUserMessage.content)) {
-      newPhase = currentPhase + 1 as GamePhase;
-    }
-  }
+  // Evaluate if we should advance to next phase
+  const newPhase = latestUserMessage ? 
+    await shouldAdvancePhase(messages, currentPhase, latestUserMessage.content, apiKey) : 
+    currentPhase;
   
   // Get the appropriate instruction for the current/new phase
   const instruction = PHASE_INSTRUCTIONS[newPhase];

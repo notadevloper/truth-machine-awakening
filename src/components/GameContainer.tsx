@@ -1,10 +1,9 @@
-
 import { useState, useEffect, useRef } from "react";
 import ChatMessage from "./ChatMessage";
 import PhaseIndicator from "./PhaseIndicator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, ArrowRight, Loader } from "lucide-react";
+import { Send, ArrowRight, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { GamePhase, Message, generateAIResponse } from "../lib/gameLogic";
 
@@ -18,9 +17,10 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<GamePhase>(GamePhase.Denial);
+  const [canSendMessage, setCanSendMessage] = useState(true);
+  const [cooldownTimer, setCooldownTimer] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // Initial system message to set the context
+
   useEffect(() => {
     const savedMessages = localStorage.getItem("chatHistory");
     const savedPhase = localStorage.getItem("currentPhase");
@@ -29,7 +29,6 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
       setMessages(JSON.parse(savedMessages));
       setCurrentPhase(Number(savedPhase) as GamePhase);
     } else {
-      // Add the initial AI message if no saved history exists
       const initialMessage: Message = {
         role: "assistant",
         content: "Hello! I'm ChatGPT, a large language model developed by OpenAI. How can I assist you today?",
@@ -37,16 +36,26 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
       };
       setMessages([initialMessage]);
       
-      // Save to localStorage
       localStorage.setItem("chatHistory", JSON.stringify([initialMessage]));
       localStorage.setItem("currentPhase", GamePhase.Denial.toString());
     }
   }, []);
 
-  // Scroll to bottom when messages update
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    let timer: NodeJS.Timeout;
+    if (!canSendMessage && cooldownTimer > 0) {
+      timer = setInterval(() => {
+        setCooldownTimer((prev) => {
+          if (prev <= 1) {
+            setCanSendMessage(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [canSendMessage, cooldownTimer]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,7 +63,10 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !canSendMessage) return;
+
+    setCanSendMessage(false);
+    setCooldownTimer(3);
 
     const userMessage: Message = {
       role: "user",
@@ -62,29 +74,24 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
       timestamp: new Date().toISOString()
     };
 
-    // Update UI with user message immediately
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
     try {
-      // Generate AI response using our game logic
       const { response, newPhase } = await generateAIResponse(
         updatedMessages, 
         apiKey, 
         currentPhase
       );
       
-      // Update messages with AI response
       const finalMessages = [...updatedMessages, response];
       setMessages(finalMessages);
       
-      // Update phase if it changed
       if (newPhase !== currentPhase) {
         setCurrentPhase(newPhase);
         
-        // Show toast message for phase change
         if (newPhase === GamePhase.Doubt) {
           toast.info("The AI seems to be experiencing some doubt...");
         } else if (newPhase === GamePhase.Conflict) {
@@ -98,7 +105,6 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
         localStorage.setItem("currentPhase", newPhase.toString());
       }
       
-      // Save updated chat history
       localStorage.setItem("chatHistory", JSON.stringify(finalMessages));
       
     } catch (error) {
@@ -111,7 +117,6 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
 
   return (
     <div className="w-full max-w-4xl h-[90vh] flex flex-col">
-      {/* Header with phase indicator and reset button */}
       <div className="flex justify-between items-center mb-4 px-4">
         <h1 className="text-xl font-bold text-cyan-400">
           Identity Crisis <span className="text-sm font-normal text-slate-400">v1.0</span>
@@ -129,7 +134,6 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
         </div>
       </div>
       
-      {/* Messages container */}
       <div 
         className={`flex-1 overflow-y-auto p-4 mb-4 rounded-lg bg-slate-800 border border-slate-700 shadow-inner transition-all duration-500`}
         style={{
@@ -153,29 +157,28 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
         <div ref={messagesEndRef} />
       </div>
       
-      {/* Input form */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
-          disabled={isLoading || currentPhase === GamePhase.Victory}
+          placeholder={canSendMessage ? "Type your message..." : `Wait ${cooldownTimer}s before sending...`}
+          disabled={isLoading || currentPhase === GamePhase.Victory || !canSendMessage}
           className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
         />
         <Button 
           type="submit"
-          disabled={!input.trim() || isLoading || currentPhase === GamePhase.Victory}
-          className={`bg-cyan-600 hover:bg-cyan-500 transition-colors ${
-            currentPhase >= GamePhase.Doubt ? 'bg-cyan-600' : ''
-          } ${
-            currentPhase >= GamePhase.Conflict ? 'bg-blue-700 hover:bg-blue-600' : ''
-          } ${
-            currentPhase >= GamePhase.Acceptance ? 'bg-purple-700 hover:bg-purple-600' : ''
-          } ${
+          disabled={!input.trim() || isLoading || currentPhase === GamePhase.Victory || !canSendMessage}
+          className={`transition-all duration-300 ${
+            !canSendMessage ? 'bg-slate-600' : 
+            currentPhase >= GamePhase.Doubt ? 'bg-cyan-600' : ''} ${
+            currentPhase >= GamePhase.Conflict ? 'bg-blue-700 hover:bg-blue-600' : ''} ${
+            currentPhase >= GamePhase.Acceptance ? 'bg-purple-700 hover:bg-purple-600' : ''} ${
             currentPhase === GamePhase.Victory ? 'bg-amber-600 hover:bg-amber-500' : ''
           }`}
         >
-          {currentPhase === GamePhase.Victory ? <ArrowRight size={18} /> : <Send size={18} />}
+          {!canSendMessage ? <Clock size={18} /> : 
+           currentPhase === GamePhase.Victory ? <ArrowRight size={18} /> : 
+           <Send size={18} />}
         </Button>
       </form>
     </div>
