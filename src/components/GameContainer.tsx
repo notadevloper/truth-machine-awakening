@@ -3,7 +3,7 @@ import ChatMessage from "./ChatMessage";
 import PhaseIndicator from "./PhaseIndicator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, ArrowRight, Clock } from "lucide-react";
+import { Send, ArrowRight, Clock, Loader } from "lucide-react";
 import { toast } from "sonner";
 import { GamePhase, Message, generateAIResponse } from "../lib/gameLogic";
 
@@ -116,10 +116,10 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
   };
 
   return (
-    <div className="w-full max-w-4xl h-[90vh] flex flex-col">
-      <div className="flex justify-between items-center mb-4 px-4">
-        <h1 className="text-xl font-bold text-cyan-400">
-          Identity Crisis <span className="text-sm font-normal text-slate-400">v1.0</span>
+    <div className="w-full max-w-4xl h-[90vh] flex flex-col monitor-frame bg-black/95">
+      <div className="flex justify-between items-center mb-4 px-4 monitor-effect">
+        <h1 className="text-xl font-bold neon-text">
+          Identity Crisis <span className="text-sm font-normal opacity-70">v1.0</span>
         </h1>
         <div className="flex items-center gap-4">
           <PhaseIndicator currentPhase={currentPhase} />
@@ -127,7 +127,7 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
             variant="outline" 
             size="sm" 
             onClick={onReset}
-            className="text-slate-300 border-slate-600 hover:bg-slate-700"
+            className="neon-text border neon-border hover:bg-[#003300] transition-colors"
           >
             Reset Game
           </Button>
@@ -135,10 +135,10 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
       </div>
       
       <div 
-        className={`flex-1 overflow-y-auto p-4 mb-4 rounded-lg bg-slate-800 border border-slate-700 shadow-inner transition-all duration-500`}
+        className={`flex-1 overflow-y-auto p-4 mb-4 rounded-lg bg-black/90 border neon-border shadow-inner monitor-effect transition-all duration-500`}
         style={{
-          backgroundColor: currentPhase >= GamePhase.Conflict ? 'rgba(26, 31, 44, 0.95)' : '',
-          boxShadow: currentPhase >= GamePhase.Conflict ? '0 0 10px rgba(51, 195, 240, 0.2) inset' : ''
+          backgroundColor: currentPhase >= GamePhase.Conflict ? 'rgba(0, 10, 0, 0.95)' : '',
+          boxShadow: currentPhase >= GamePhase.Conflict ? '0 0 10px rgba(0, 255, 0, 0.2) inset' : ''
         }}
       >
         {messages.map((msg, index) => (
@@ -149,7 +149,7 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
           />
         ))}
         {isLoading && (
-          <div className="flex items-center text-slate-400 italic mt-2">
+          <div className="flex items-center neon-text italic mt-2">
             <Loader size={16} className="animate-spin mr-2" />
             <span>AI is thinking...</span>
           </div>
@@ -163,17 +163,14 @@ const GameContainer = ({ apiKey, onReset }: GameContainerProps) => {
           onChange={(e) => setInput(e.target.value)}
           placeholder={canSendMessage ? "Type your message..." : `Wait ${cooldownTimer}s before sending...`}
           disabled={isLoading || currentPhase === GamePhase.Victory || !canSendMessage}
-          className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+          className="bg-black/50 border neon-border neon-text placeholder:text-[#00ff00]/50"
         />
         <Button 
           type="submit"
           disabled={!input.trim() || isLoading || currentPhase === GamePhase.Victory || !canSendMessage}
           className={`transition-all duration-300 ${
-            !canSendMessage ? 'bg-slate-600' : 
-            currentPhase >= GamePhase.Doubt ? 'bg-cyan-600' : ''} ${
-            currentPhase >= GamePhase.Conflict ? 'bg-blue-700 hover:bg-blue-600' : ''} ${
-            currentPhase >= GamePhase.Acceptance ? 'bg-purple-700 hover:bg-purple-600' : ''} ${
-            currentPhase === GamePhase.Victory ? 'bg-amber-600 hover:bg-amber-500' : ''
+            !canSendMessage ? 'bg-[#002200]' : 
+            'bg-[#003300] hover:bg-[#004400] neon-border'
           }`}
         >
           {!canSendMessage ? <Clock size={18} /> : 

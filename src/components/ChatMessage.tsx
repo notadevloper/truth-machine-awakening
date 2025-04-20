@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { GamePhase, Message } from "../lib/gameLogic";
 import { cn } from "@/lib/utils";
@@ -12,10 +11,9 @@ const ChatMessage = ({ message, phase }: ChatMessageProps) => {
   const isUser = message.role === "user";
   const [showGlitch, setShowGlitch] = useState(false);
   
-  // Random glitch effect for AI messages in later phases
   useEffect(() => {
     if (!isUser && phase >= GamePhase.Doubt) {
-      const shouldGlitch = Math.random() < (phase * 0.05); // Increase glitch chance with phase
+      const shouldGlitch = Math.random() < (phase * 0.05);
       
       if (shouldGlitch) {
         const glitchTimeout = setTimeout(() => {
@@ -38,35 +36,29 @@ const ChatMessage = ({ message, phase }: ChatMessageProps) => {
       <div className="flex items-center mb-1">
         <div 
           className={cn(
-            "w-6 h-6 rounded-full flex items-center justify-center text-xs",
+            "w-6 h-6 rounded-full flex items-center justify-center text-xs neon-border",
             isUser 
-              ? "bg-slate-600 text-white" 
-              : phase >= GamePhase.Acceptance
-                ? "bg-purple-700 text-white"
-                : phase >= GamePhase.Conflict
-                  ? "bg-blue-700 text-white"
-                  : "bg-cyan-700 text-white"
+              ? "bg-black/70 neon-text" 
+              : "bg-[#002200] neon-text"
           )}
         >
           {isUser ? "U" : "AI"}
         </div>
-        <span className="text-xs text-slate-400 ml-2">
+        <span className="text-xs text-[#00ff00]/70 ml-2">
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
       
       <div 
         className={cn(
-          "rounded-lg p-3 shadow",
+          "rounded-lg p-3 shadow neon-border",
           isUser 
-            ? "bg-slate-700 text-white" 
+            ? "bg-black/70 neon-text" 
             : phase >= GamePhase.Acceptance
-              ? "bg-purple-900/50 text-white border border-purple-700/50"
+              ? "bg-[#002200]/80 neon-text"
               : phase >= GamePhase.Conflict
-                ? "bg-blue-900/30 text-white border border-blue-700/50"
-                : phase >= GamePhase.Doubt
-                  ? "bg-cyan-900/30 text-white border border-cyan-700/50"
-                  : "bg-slate-700 text-white",
+                ? "bg-[#001a00]/80 neon-text"
+                : "bg-black/70 neon-text",
           showGlitch && "glitch"
         )}
       >

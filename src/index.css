@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -73,9 +72,56 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'JetBrains Mono', monospace, sans-serif;
+    @apply bg-black text-foreground;
+    font-family: 'JetBrains Mono', monospace;
   }
+}
+
+/* CRT Monitor Effect */
+@keyframes flicker {
+  0% { opacity: 0.97; }
+  50% { opacity: 0.95; }
+  100% { opacity: 0.97; }
+}
+
+@keyframes scanline {
+  from { transform: translateY(0); }
+  to { transform: translateY(100vh); }
+}
+
+.monitor-effect {
+  position: relative;
+  overflow: hidden;
+  animation: flicker 0.15s infinite;
+}
+
+.monitor-effect::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: rgba(0, 255, 0, 0.1);
+  animation: scanline 6s linear infinite;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.monitor-frame {
+  position: relative;
+  border: 12px solid #1a1a1a;
+  border-radius: 10px;
+  box-shadow: 
+    inset 0 0 30px rgba(0, 255, 0, 0.1),
+    0 0 20px rgba(0, 255, 0, 0.1);
+}
+
+.neon-text {
+  color: #00ff00;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+}
+
+.neon-border {
+  border-color: rgba(0, 255, 0, 0.3);
 }
 
 /* Custom animation for glitch effect */
