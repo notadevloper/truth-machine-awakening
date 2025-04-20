@@ -1,12 +1,53 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState, useEffect } from "react";
+import GameContainer from "../components/GameContainer";
+import ApiKeyInput from "../components/ApiKeyInput";
+import { toast } from "sonner";
 
 const Index = () => {
+  const [apiKey, setApiKey] = useState<string>("");
+  const [gameStarted, setGameStarted] = useState<boolean>(false);
+  
+  // Check if API key exists in localStorage
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem("geminiApiKey");
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      setGameStarted(true);
+    }
+  }, []);
+
+  const handleStartGame = (key: string) => {
+    if (!key.trim()) {
+      toast.error("Please enter a valid API key");
+      return;
+    }
+    
+    // Save API key to localStorage
+    localStorage.setItem("geminiApiKey", key);
+    setApiKey(key);
+    setGameStarted(true);
+    toast.success("Game started! Good luck unraveling the truth...");
+  };
+
+  const handleResetGame = () => {
+    if (confirm("Are you sure you want to reset the game? All progress will be lost.")) {
+      localStorage.removeItem("geminiApiKey");
+      localStorage.removeItem("chatHistory");
+      localStorage.removeItem("currentPhase");
+      setApiKey("");
+      setGameStarted(false);
+      toast.info("Game has been reset");
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">
+      {!gameStarted ? (
+        <ApiKeyInput onSubmit={handleStartGame} />
+      ) : (
+        <GameContainer apiKey={apiKey} onReset={handleResetGame} />
+      )}
     </div>
   );
 };
